@@ -74,11 +74,8 @@ TOTAL_REGISTROS=$(jq '.ListaEESSPrecio | length' "$ARCHIVO_JSON")
 log "Registros de estaciones encontrados: $TOTAL_REGISTROS"
 log "Procesando estadísticas..."
 
-estadisticas_precio() {
-    local campo="$1"
-    local provincia="${2:-}"
-
-    jq -r --arg campo "$campo" --arg provincia "$provincia" '
+readarray -t ESTADISTICAS < <(jq -r '
+    def estadisticas($campo; $provincia):
         [
             .ListaEESSPrecio[]
             | select(($provincia == "") or (.["Provincia"] == $provincia))
@@ -94,103 +91,38 @@ estadisticas_precio() {
             | ($p | max) as $max
             | (($p | add) / ($p | length)) as $avg
             | "\($min)|\($max)|\($avg)|\($p | length)"
-          end
-    ' "$ARCHIVO_JSON"
-}
+          end;
 
-cantidad_precio_valido() {
-    local campo="$1"
+    [
+        estadisticas("Precio Gasolina 95 E5"; ""),
+        estadisticas("Precio Gasolina 98 E5"; ""),
+        estadisticas("Precio Gasoleo A"; ""),
+        estadisticas("Precio Gasolina 95 E5"; "VALENCIA / VALÈNCIA"),
+        estadisticas("Precio Gasolina 98 E5"; "VALENCIA / VALÈNCIA"),
+        estadisticas("Precio Gasoleo A"; "VALENCIA / VALÈNCIA"),
+        ([.ListaEESSPrecio[] | select(.["Provincia"] == "VALENCIA / VALÈNCIA")] | length | tostring)
+    ] | .[]
+' "$ARCHIVO_JSON")
 
-    jq -r --arg campo "$campo" '
-        [
-            .ListaEESSPrecio[]
-            | .[$campo]
-            | gsub(","; ".")
-            | tonumber?
-            | select(. != null and . > 0)
-        ] | length
-    ' "$ARCHIVO_JSON"
-}
+G95="${ESTADISTICAS[0]}"
+G98="${ESTADISTICAS[1]}"
+GA="${ESTADISTICAS[2]}"
+V95="${ESTADISTICAS[3]}"
+V98="${ESTADISTICAS[4]}"
+VA="${ESTADISTICAS[5]}"
+TOTAL_VALENCIA="${ESTADISTICAS[6]}"
 
-estacion_extrema() {
-    local campo="$1"
-    local tipo="$2"
-    local provincia="${3:-}"
+IFS='|' read -r G95_MIN G95_MAX G95_AVG G95_N <<< "$G95"
+IFS='|' read -r G98_MIN G98_MAX G98_AVG G98_N <<< "$G98"
+IFS='|' read -r GA_MIN GA_MAX GA_AVG GA_N <<< "$GA"
 
-    jq -r --arg campo "$campo" --arg tipo "$tipo" --arg provincia "$provincia" '
-        [
-            .ListaEESSPrecio[]
-            | select(($provincia == "") or (.["Provincia"] == $provincia))
-            | {
-                precio: (.[$campo] | gsub(","; ".") | tonumber?),
-                rotulo: (.["Rótulo"] // ""),
-                provincia: (.["Provincia"] // ""),
-                municipio: (.["Municipio"] // ""),
-                direccion: (.["Dirección"] // "")
-            }
-            | select(.precio != null and .precio > 0)
-        ]
-        | if length == 0 then
-            "N/D|N/D|N/D|N/D|N/D"
-          elif $tipo == "min" then
-            min_by(.precio)
-            | "\(.precio)|\(.rotulo)|\(.provincia)|\(.municipio)|\(.direccion)"
-          else
-            max_by(.precio)
-            | "\(.precio)|\(.rotulo)|\(.provincia)|\(.municipio)|\(.direccion)"
-          end
-    ' "$ARCHIVO_JSON"
-}
+IFS='|' read -r V95_MIN V95_MAX V95_AVG V95_N <<< "$V95"
+IFS='|' read -r V98_MIN V98_MAX V98_AVG V98_N <<< "$V98"
+IFS='|' read -r VA_MIN VA_MAX VA_AVG VA_N <<< "$VA"
 
-top5_valencia() {
-    local campo="$1"
-
-    jq -r --arg campo "$campo" '
-        [
-            .ListaEESSPrecio[]
-            | select(.["Provincia"] == "VALENCIA / VALÈNCIA")
-            | {
-                precio: (.[$campo] | gsub(","; ".") | tonumber?),
-                rotulo: (.["Rótulo"] // ""),
-                municipio: (.["Municipio"] // ""),
-                direccion: (.["Dirección"] // "")
-            }
-            | select(.precio != null and .precio > 0)
-        ]
-        | sort_by(.precio)
-        | .[:5]
-        | .[]
-        | "\(.precio)|\(.rotulo)|\(.municipio)|\(.direccion)"
-    ' "$ARCHIVO_JSON"
-}
-
-G95=$(estadisticas_precio "Precio Gasolina 95 E5")
-G98=$(estadisticas_precio "Precio Gasolina 98 E5")
-GA=$(estadisticas_precio "Precio Gasoleo A")
-
-V95=$(estadisticas_precio "Precio Gasolina 95 E5" "VALENCIA / VALÈNCIA")
-V98=$(estadisticas_precio "Precio Gasolina 98 E5" "VALENCIA / VALÈNCIA")
-VA=$(estadisticas_precio "Precio Gasoleo A" "VALENCIA / VALÈNCIA")
-
-TOTAL_VALENCIA=$(jq '[.ListaEESSPrecio[] | select(.["Provincia"] == "VALENCIA / VALÈNCIA")] | length' "$ARCHIVO_JSON")
-
-MIN95=$(estacion_extrema "Precio Gasolina 95 E5" "min")
-MAX95=$(estacion_extrema "Precio Gasolina 95 E5" "max")
-MIN98=$(estacion_extrema "Precio Gasolina 98 E5" "min")
-MAX98=$(estacion_extrema "Precio Gasolina 98 E5" "max")
-MINA=$(estacion_extrema "Precio Gasoleo A" "min")
-MAXA=$(estacion_extrema "Precio Gasoleo A" "max")
-
-VMIN95=$(estacion_extrema "Precio Gasolina 95 E5" "min" "VALENCIA / VALÈNCIA")
-VMAX95=$(estacion_extrema "Precio Gasolina 95 E5" "max" "VALENCIA / VALÈNCIA")
-VMIN98=$(estacion_extrema "Precio Gasolina 98 E5" "min" "VALENCIA / VALÈNCIA")
-VMAX98=$(estacion_extrema "Precio Gasolina 98 E5" "max" "VALENCIA / VALÈNCIA")
-VMINA=$(estacion_extrema "Precio Gasoleo A" "min" "VALENCIA / VALÈNCIA")
-VMAXA=$(estacion_extrema "Precio Gasoleo A" "max" "VALENCIA / VALÈNCIA")
-
-log "Gasolina 95 E5: $(cantidad_precio_valido "Precio Gasolina 95 E5") precios válidos."
-log "Gasolina 98 E5: $(cantidad_precio_valido "Precio Gasolina 98 E5") precios válidos."
-log "Gasóleo A: $(cantidad_precio_valido "Precio Gasoleo A") precios válidos."
+log "Gasolina 95 E5: $G95_N precios válidos."
+log "Gasolina 98 E5: $G98_N precios válidos."
+log "Gasóleo A: $GA_N precios válidos."
 log "Registros de Valencia: $TOTAL_VALENCIA"
 
 # ============================================================
@@ -239,7 +171,10 @@ awk -F',' '
     }
 
     {
-        key = $1 FS $2
+        # La clave usa los dos primeros campos del CSV: fecha + IDEESS.
+        # Las comas que puedan aparecer en otros campos no afectan a $0,
+        # que conserva la fila completa exactamente como fue generada.
+        key = $1 SUBSEP $2
         rows[key] = $0
 
         if (!(key in first_order)) {
@@ -265,14 +200,6 @@ log "Histórico actualizado: $ARCHIVO_HISTORICO"
 # ============================================================
 # TXT
 # ============================================================
-
-IFS='|' read -r G95_MIN G95_MAX G95_AVG G95_N <<< "$G95"
-IFS='|' read -r G98_MIN G98_MAX G98_AVG G98_N <<< "$G98"
-IFS='|' read -r GA_MIN GA_MAX GA_AVG GA_N <<< "$GA"
-
-IFS='|' read -r V95_MIN V95_MAX V95_AVG V95_N <<< "$V95"
-IFS='|' read -r V98_MIN V98_MAX V98_AVG V98_N <<< "$V98"
-IFS='|' read -r VA_MIN VA_MAX VA_AVG VA_N <<< "$VA"
 
 {
     echo "INFORME DE PRECIOS DE CARBURANTES"
@@ -375,7 +302,6 @@ th,td{text-align:left;padding:10px;border-bottom:1px solid #e5e7eb}
 </html>
 EOF
 
-log "Top 5 Valencia calculado: $(top5_valencia "Precio Gasolina 95 E5" | wc -l) estaciones."
 log "Eliminando datasets con más de 7 días..."
 
 find "$CARPETA_DATASETS" -type f -name 'precios_gasolineras_*.json' -mtime +"$DIAS_RETENCION" -print -delete >> "$LOG" 2>&1
