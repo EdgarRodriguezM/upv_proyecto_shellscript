@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 6 * * *'
-      timezone: 'Europe/Madrid'
+    - cron: '*/5 * * * *'
 
 jobs:
   actualizar:
