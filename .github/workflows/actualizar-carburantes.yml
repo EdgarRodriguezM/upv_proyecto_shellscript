@@ -2,10 +2,9 @@ name: Actualizar precios de carburantes
 
 on:
   workflow_dispatch:
-
-schedule:
-  - cron: '0 6 * * *'
-    timezone: 'Europe/Madrid'
+  schedule:
+    - cron: '0 6 * * *'
+      timezone: 'Europe/Madrid'
 
 jobs:
   actualizar:
