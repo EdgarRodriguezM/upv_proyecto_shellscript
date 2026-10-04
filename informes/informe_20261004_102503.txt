@@ -1,0 +1,48 @@
+INFORME DE PRECIOS DE CARBURANTES
+Fecha de ejecución: 2026-10-04 10:25:03
+
+========================================
+RESUMEN GENERAL
+========================================
+Registros de estaciones: 11469
+
+Gasolina 95 E5
+  Mínimo: 1.289 €/L
+  Máximo: 2.299 €/L
+  Media:  1.8061471559633082 €/L
+  Precios válidos: 10900
+
+Gasolina 98 E5
+  Mínimo: 1.415 €/L
+  Máximo: 2.500 €/L
+  Media:  1.953161084819796 €/L
+  Precios válidos: 5494
+
+Gasóleo A
+  Mínimo: 1.499 €/L
+  Máximo: 2.349 €/L
+  Media:  1.909447139303479 €/L
+  Precios válidos: 11256
+
+========================================
+VALENCIA / VALÈNCIA
+========================================
+Estaciones: 641
+
+Gasolina 95 E5
+  Mínimo: 1.595 €/L
+  Máximo: 2.139 €/L
+  Media:  1.8118950819672133 €/L
+  Precios válidos: 610
+
+Gasolina 98 E5
+  Mínimo: 1.749 €/L
+  Máximo: 2.259 €/L
+  Media:  1.994852941176471 €/L
+  Precios válidos: 272
+
+Gasóleo A
+  Mínimo: 1.699 €/L
+  Máximo: 2.079 €/L
+  Media:  1.87894568690096 €/L
+  Precios válidos: 626
